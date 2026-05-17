@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import './globals.css'
 import '@fontsource/inter'
 
+import AppShell from '@/components/AppShell'
+
 export const metadata: Metadata = {
-  title: 'Hello Next.js',
-  description: 'Full-stack Next.js application with frontend and backend',
+  title: 'Análise de Voz',
+  description: 'Gravação e análise emocional de áudio',
 }
 
 export default function RootLayout({
@@ -13,8 +15,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="pt-BR">
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   )
 }
