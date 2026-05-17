@@ -65,6 +65,9 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
+# Backend ML model cache
+backend/model_cache/
+
 # Scrapy stuff:
 .scrapy
 
@@ -216,3 +219,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+node_modules
+.next
