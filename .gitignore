@@ -65,7 +65,7 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
-# Backend ML model cache
+# Backend ML model cache (Hugging Face, Whisper, Torch — árvore inteira)
 backend/model_cache/
 
 # Scrapy stuff:
