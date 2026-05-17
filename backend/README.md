@@ -437,3 +437,23 @@ flowchart LR
 ## Contato com o frontend
 
 O frontend Next.js (`frontend/app/audio-recording/page.tsx`) envia `POST` para `http://localhost:5000/api/audio` (ou `NEXT_PUBLIC_API_URL`) e exibe `analysis.transcription`, `analysis.emotion` e `analysis.analysis`.
+
+---
+
+## Supabase (histórico na nuvem)
+
+Após cada análise bem-sucedida, o texto da **LLM** (e metadados) é salvo na tabela `analyses`.
+
+### Configuração
+
+1. No [Supabase SQL Editor](https://supabase.com/dashboard), execute `backend/sql/supabase_schema.sql`.
+2. Credenciais em `services/supabase_service.py` (`SUPABASE_URL`, `SUPABASE_KEY`).
+3. Reinicie o backend (`python app.py` ou `docker compose up`).
+
+### Endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/analyses?limit=50` | Lista análises salvas (mais recentes primeiro) |
+
+O frontend consome em `/analyses` (`frontend/app/analyses/page.tsx`).

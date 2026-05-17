@@ -4,6 +4,7 @@ import os
 
 from utils.model_loader import set_model_cache_dir, load_models
 from routes.audio_route import register_audio_routes
+from routes.analyses_route import register_analyses_routes
 
 # ============================================================
 # APP
@@ -37,6 +38,7 @@ set_model_cache_dir(MODEL_CACHE_DIR)
 
 # Register routes
 register_audio_routes(app)
+register_analyses_routes(app)
 
 # ============================================================
 # MAIN

@@ -3,6 +3,7 @@ from datetime import datetime
 
 from utils.audio_loader import load_audio_from_bytes
 from services.audio_service import analyze_audio
+from services.supabase_service import save_analysis
 
 
 def register_audio_routes(app):
@@ -34,12 +35,22 @@ def register_audio_routes(app):
                     'error': analysis_result['error'],
                     'timestamp': datetime.now().isoformat()
                 }), 500
-            
-            return jsonify({
+
+            saved_row = None
+            try:
+                saved_row = save_analysis(analysis_result)
+            except Exception as save_error:
+                print(f'Warning: failed to save analysis to Supabase: {save_error}')
+
+            response_body = {
                 'message': 'Audio analyzed successfully',
                 'timestamp': datetime.now().isoformat(),
-                'analysis': analysis_result
-            }), 200
+                'analysis': analysis_result,
+            }
+            if saved_row and saved_row.get('id'):
+                response_body['analysis_id'] = saved_row['id']
+
+            return jsonify(response_body), 200
             
         except Exception as e:
             print(f'Error processing audio: {e}')
