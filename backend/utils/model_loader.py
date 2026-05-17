@@ -1,6 +1,8 @@
+import json
 import os
 import subprocess
 import threading
+import urllib.request
 from faster_whisper import WhisperModel
 from transformers import pipeline
 from silero_vad import load_silero_vad
@@ -59,7 +61,19 @@ def ensure_ollama_model(model_name):
             return
         
         print(f"Downloading Ollama model: {model_name}")
-        subprocess.run(["ollama", "pull", model_name], check=True)
+        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+        try:
+            subprocess.run(["ollama", "pull", model_name], check=True)
+        except (FileNotFoundError, OSError):
+            req = urllib.request.Request(
+                f"{host}/api/pull",
+                data=json.dumps({"name": model_name}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=600) as resp:
+                while resp.readline():
+                    pass
         print(f"Model downloaded successfully: {model_name}")
     
     except Exception as e:

@@ -1,67 +1,71 @@
-# Hello Next.js
+# FIAP 4 Tech Challenge
 
-A full-stack Next.js application with a beautiful frontend and backend API.
+Monorepo com frontend Next.js e backend Flask para análise de áudio.
 
-## Features
-
-- **Frontend**: Modern React-based UI with gradient background and glassmorphism design
-- **Backend**: Next.js API route that returns random hello messages
-- **Full-stack integration**: Frontend fetches data from backend API
-- **TypeScript**: Fully typed for better development experience
-
-## Project Structure
+## Estrutura do repositório
 
 ```
-hello-nextjs/
-├── app/
-│   ├── api/
-│   │   └── hello/
-│   │       └── route.ts       # Backend API endpoint
-│   ├── globals.css            # Global styles
-│   ├── layout.tsx             # Root layout
-│   └── page.tsx               # Frontend page
-├── package.json               # Dependencies
-├── tsconfig.json              # TypeScript configuration
-└── next.config.js             # Next.js configuration
+fiap-4-tech-challenge/
+├── frontend/     # Next.js (UI + API routes)
+├── backend/      # Flask (análise de áudio com ML)
+└── *.ipynb       # Notebooks de exploração
 ```
 
-## Setup Instructions
+## Como rodar
 
-1. **Navigate to the project directory**:
-   ```bash
-   cd hello-nextjs
-   ```
+### Backend
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate    # Windows
+pip install -r requirements.txt
+python app.py
+```
 
-3. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
+Servidor: [http://localhost:5000](http://localhost:5000)
 
-4. **Open your browser**:
-   Navigate to [http://localhost:3000](http://localhost:3000)
+### Frontend
 
-## Available Scripts
+Requer **Node.js 20** (`node -v` → `v20.x.x`).
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## How It Works
+App: [http://localhost:3000](http://localhost:3000)
 
-1. The frontend (`app/page.tsx`) displays a beautiful hello page
-2. When the page loads, it fetches data from the backend API (`/api/hello`)
-3. The backend API returns a random hello message with a timestamp
-4. The user can click "Refresh Message" to get a new message from the backend
+### Docker (recomendado)
 
-## Technologies Used
+Na raiz do repositório, com [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado:
 
-- **Next.js 14** - React framework with App Router
-- **React 18** - UI library
-- **TypeScript** - Type-safe JavaScript
-- **CSS** - Styling with inline styles for simplicity
+```bash
+docker compose up --build
+```
+
+Na **primeira subida**, o frontend roda `npm ci` e o backend valida/instala pacotes Python no entrypoint (o volume `node_modules` começa vazio e não usa o da imagem). Isso pode levar alguns minutos.
+
+Isso sobe três serviços:
+
+| Serviço   | URL                         | Descrição                          |
+|-----------|-----------------------------|------------------------------------|
+| frontend  | http://localhost:3000       | Next.js (Node.js 20, `npm ci`)      |
+| backend   | http://localhost:5000       | Flask (Python 3.10) + modelos ML   |
+| ollama    | http://localhost:11434      | LLM `gemma3:1b` para análise       |
+
+A primeira execução pode demorar (download de imagens, modelos PyTorch/Hugging Face e Ollama). O cache fica em `backend/model_cache` e no volume Docker do Ollama.
+
+Comandos úteis:
+
+```bash
+docker compose up --build -d   # em segundo plano
+docker compose logs -f backend
+docker compose down
+```
+
+## Documentação
+
+- [frontend/README.md](frontend/README.md)
+- [backend/README.md](backend/README.md)
