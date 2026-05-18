@@ -26,5 +26,5 @@ else
   echo "npm dependencies up to date."
 fi
 
-echo "Starting Next.js..."
-exec npm run dev -- -H 0.0.0.0 -p 3000
+echo "Starting Vite dev server..."
+exec npm run dev
