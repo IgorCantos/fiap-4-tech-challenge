@@ -3,7 +3,7 @@ from typing import Any, Optional
 from supabase import create_client, Client
 
 SUPABASE_URL = "https://iurjkahrevgpmnfthtjh.supabase.co"
-SUPABASE_KEY = "sb_publishable_swjlMyRfUljMrNp4-14Jdg_qch8pucR"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1cmprYWhyZXZncG1uZnRodGpoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTAxMjE4NSwiZXhwIjoyMDk0NTg4MTg1fQ.zolsH2gAMs_geb7vAtiit_ZLpOzOKEBozo7sVkrEX2o"
 
 _client: Optional[Client] = None
 
