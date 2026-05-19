@@ -60,6 +60,14 @@ def analyze_audio(audio_np):
     emotion_label = str(top_emotion["label"]).lower()
     emotion_score = float(top_emotion["score"])
     
+    emotion_map = {
+        "neu": "neutro",
+        "hap": "feliz",
+        "ang": "irritado",
+        "sad": "triste"
+    }
+    emotion_label = emotion_map.get(emotion_label, emotion_label)
+    
     if emotion_score < 0.4:
         emotion_label = "inconclusiva"
     

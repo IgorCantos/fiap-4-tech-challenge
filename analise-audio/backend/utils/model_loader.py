@@ -109,7 +109,7 @@ def load_models():
         print("Loading emotion classifier...")
         emotion_classifier = pipeline(
             "audio-classification",
-            model="audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim",
+            model="superb/wav2vec2-base-superb-er",
             cache_dir=MODEL_CACHE_DIR
         )
         
