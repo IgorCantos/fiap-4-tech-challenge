@@ -96,6 +96,13 @@ export default function AudioRecording() {
     setErrorMessage('')
     setAnalysisResult(null)
 
+    setTimeout(() => {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth',
+      })
+    }, 100)
+
     const formData = new FormData()
     formData.append('audio', audioBlob, 'recording.webm')
 
