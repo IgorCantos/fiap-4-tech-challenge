@@ -1,173 +1,263 @@
-# Saúde da Mulher: Análise de Vídeo para Apoio Fisioterapêutico com IA
+# Saúde da Mulher com IA — Análise de Exercícios por Vídeo
 
-Este projeto apresenta um protótipo de acompanhamento fisioterapêutico em tempo real voltado ao contexto de saúde da mulher. A proposta é utilizar visão computacional para apoiar a recuperação de movimentos após algum problema físico, como limitações motoras, redução de mobilidade, dores musculoesqueléticas ou processos de reabilitação funcional.
+Esse projeto é uma prova de conceito que usa visão computacional e inteligência artificial para acompanhar exercícios fisioterapêuticos em tempo real usando a webcam.
 
-A solução identifica pontos-chave do corpo humano por meio de um modelo YOLO de estimativa de pose e, a partir dessas coordenadas, conta repetições de exercícios previamente definidos. O foco não é substituir o acompanhamento profissional, mas demonstrar como a inteligência artificial pode ser usada como ferramenta complementar para monitoramento, feedback e organização de uma rotina de exercícios.
+A ideia aqui não é substituir fisioterapeutas ou realizar diagnósticos. O objetivo é mostrar como IA e pose estimation podem ajudar no acompanhamento de movimentos, contagem de exercícios e organização de rotinas de reabilitação.
 
-O projeto foi desenvolvido no arquivo `fisioterapia.ipynb`, onde implementamos a captura da webcam, a aplicação do modelo de pose, a interpretação dos movimentos e a exibição do progresso da usuária em uma interface visual objetiva.
+A aplicação utiliza um modelo YOLO de detecção de pose humana para identificar pontos do corpo e acompanhar movimentos automaticamente.
+
+O projeto começou como um notebook experimental (`fisioterapia.ipynb`) e evoluiu para uma aplicação web completa usando Streamlit e Docker.
+
+A aplicação principal roda pelo arquivo:
+
+```bash
+app.py
+```
 
 ---
 
 # Objetivo
 
-O objetivo do projeto é demonstrar como técnicas de inteligência artificial podem apoiar o monitoramento de exercícios fisioterapêuticos associados à recuperação funcional da mulher. A solução oferece feedback automático sobre a execução de uma sequência de movimentos, permitindo acompanhar repetições e progressão de forma direta.
+O foco do projeto é demonstrar como visão computacional pode ser aplicada em um cenário de fisioterapia e recuperação funcional.
 
-Dentro do tema de saúde da mulher, o projeto se posiciona como uma prova de conceito para auxiliar rotinas de reabilitação e retomada gradual de mobilidade, especialmente em cenários nos quais o acompanhamento do movimento pode contribuir para adesão, organização e percepção de evolução.
+A solução acompanha exercícios pela câmera e fornece feedback visual em tempo real sobre:
 
-Na versão atual, o sistema acompanha três exercícios:
+- exercício atual
+- quantidade de repetições
+- progresso da execução
+
+Hoje o sistema acompanha automaticamente 3 exercícios:
 
 - Elevação Lateral
 - Ponte
 - Agachamento
 
-Cada exercício possui meta de 5 repetições. Ao atingir a meta, o sistema avança automaticamente para o próximo exercício.
+Cada exercício possui uma meta de 5 repetições. Quando a meta é atingida, o sistema avança automaticamente para o próximo exercício.
 
 ---
 
-# Tecnologias Utilizadas
+# Tecnologias utilizadas
 
-A implementação utiliza as seguintes bibliotecas:
+A aplicação foi construída utilizando:
 
-- `ultralytics`: responsável por carregar e executar o modelo YOLO de estimativa de pose.
-- `opencv-python`: utilizada para capturar vídeo da webcam, desenhar informações na tela e exibir a interface em tempo real.
-- `numpy`: utilizada como apoio para manipulação numérica.
-
-O modelo carregado é o `yolo11s-pose.pt`, presente no próprio diretório do projeto. Trata-se de um modelo pré-treinado para detecção de pose humana, capaz de identificar pontos anatômicos como ombros, punhos, quadris e joelhos.
-
-Esses pontos permitem observar movimentos relevantes em exercícios de fortalecimento, mobilidade e controle corporal.
-
----
-
-# Funcionamento Geral
-
-O funcionamento da solução pode ser resumido em seis etapas principais:
-
-1. Instala e importa as dependências necessárias.
-2. Carrega o modelo YOLO de estimativa de pose.
-3. Abre a webcam do computador.
-4. Processa cada frame do vídeo em tempo real.
-5. Extrai pontos corporais da pessoa detectada.
-6. Aplica regras de movimento para contar repetições e atualizar a interface.
-
-A aplicação permanece em execução até que o usuário pressione a tecla `q`.
+- `Python`
+- `Streamlit`
+- `streamlit-webrtc`
+- `Ultralytics`
+- `YOLO11 Pose`
+- `OpenCV`
+- `NumPy`
+- `Docker`
+- `Docker Compose`
 
 ---
 
-# Lógica Interna
+# Modelo utilizado
 
-O projeto não realiza treinamento de modelo. A inteligência do protótipo está na combinação entre a detecção de pose fornecida pelo YOLO e uma camada de regras implementada para interpretar os movimentos.
+O projeto utiliza o modelo:
 
-Para cada frame capturado, o modelo retorna coordenadas dos pontos corporais detectados. A solução considera a primeira pessoa identificada na imagem e utiliza principalmente os seguintes pontos:
+```bash
+yolo11s-pose.pt
+```
 
-- Ombro
-- Punho
-- Quadril
-- Joelho
+Esse modelo é responsável por detectar os keypoints do corpo humano, como:
 
-Na prática, a contagem dos exercícios é baseada sobretudo na posição vertical desses pontos. Como em imagens digitais o eixo vertical cresce de cima para baixo, valores menores de `y` indicam pontos mais altos na tela, enquanto valores maiores indicam pontos mais baixos.
+- ombros
+- punhos
+- quadril
+- joelhos
 
-Essa abordagem foi escolhida por ser interpretável e adequada para um protótipo acadêmico. Ela permite demonstrar a lógica de acompanhamento do movimento sem exigir sensores corporais adicionais.
-
----
-
-# Controle de Repetições
-
-A implementação usa uma variável de estado para diferenciar as fases do movimento, alternando entre posições como `"baixo"` e `"alto"`.
-
-Esse controle evita que o sistema conte várias repetições enquanto a pessoa permanece parada em uma mesma posição.
-
-A repetição só é contabilizada quando o movimento completa uma transição esperada.
-
-Por exemplo:
-
-- Na Elevação Lateral, o sistema observa se o punho sobe acima do ombro e depois retorna.
-- Na Ponte, observa a subida e descida do quadril.
-- No Agachamento, observa a variação vertical do quadril entre a posição baixa e a posição de retorno.
-
-Essa abordagem funciona como uma máquina de estados: o sistema identifica uma fase inicial, aguarda a mudança corporal esperada e só então incrementa o contador.
+A partir desses pontos, a aplicação consegue interpretar os movimentos realizados pela pessoa na frente da câmera.
 
 ---
 
-# Exercícios Monitorados
+# Estrutura do projeto
 
-## Elevação Lateral
+```bash
+.
+├── app.py
+├── fisioterapia.ipynb
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── yolo11s-pose.pt
+```
 
-A elevação lateral pode ser associada a exercícios de mobilidade e fortalecimento de membros superiores.
+---
 
-A regra compara a altura do punho com a altura do ombro. Quando o punho ultrapassa a linha do ombro, o movimento é considerado em fase alta. Quando o punho retorna para baixo, uma repetição é contabilizada.
+# Como executar com Docker
+
+A forma mais simples de rodar o projeto é usando Docker.
+
+## Pré-requisitos
+
+Você precisa ter instalado:
+
+- Docker
+- Docker Compose
+
+---
+
+## Subindo a aplicação
+
+Entre na pasta do projeto e execute:
+
+```bash
+docker-compose up --build
+```
+
+O Docker irá:
+
+- baixar dependências
+- criar a imagem
+- iniciar os containers
+
+Depois disso, acesse no navegador:
+
+```bash
+http://localhost:8501
+```
+
+Quando abrir:
+
+1. Clique em `START`
+2. Permita acesso à webcam
+3. O processamento começará automaticamente
+
+---
+
+# Como parar a aplicação
+
+```bash
+docker-compose down
+```
+
+---
+
+# Funcionamento interno
+
+A aplicação captura os frames da webcam em tempo real e envia cada frame para o modelo YOLO Pose.
+
+O modelo retorna coordenadas dos pontos do corpo humano.
+
+Exemplo:
+
+- ombro
+- punho
+- quadril
+- joelho
+
+A partir dessas coordenadas, o sistema aplica regras simples para detectar movimentos e contar repetições.
+
+A lógica funciona como uma máquina de estados:
+
+```text
+baixo -> alto -> baixo = 1 repetição
+```
+
+Ou seja:
+
+- movimento sobe
+- atinge a posição esperada
+- retorna
+- repetição contabilizada
+
+---
+
+# Exercícios monitorados
+
+## Elevação lateral
+
+Nesse exercício, o sistema compara a posição do punho em relação ao ombro.
+
+Quando o punho sobe acima da linha do ombro:
+- o movimento entra no estado "alto"
+
+Quando o braço desce:
+- a repetição é contabilizada
 
 ---
 
 ## Ponte
 
-A ponte é um exercício frequentemente relacionado ao fortalecimento de quadril, glúteos e estabilidade da região central do corpo.
+A aplicação acompanha a posição vertical do quadril.
 
-A regra utiliza a altura do quadril: quando ele sobe acima de um limiar definido, o sistema entende que a ponte foi elevada; quando retorna a uma posição inferior, a repetição é registrada.
+Quando o quadril sobe acima do limite esperado:
+- o movimento é considerado válido
+
+Quando retorna:
+- a repetição é registrada
 
 ---
 
 ## Agachamento
 
-O agachamento contribui para fortalecimento de membros inferiores e controle funcional de movimento.
+O sistema também acompanha o eixo vertical do quadril.
 
-Ele também é avaliado pela altura do quadril. O sistema interpreta a descida e o retorno do quadril como as fases principais do movimento, contabilizando a repetição quando o ciclo é concluído.
+Quando o usuário desce:
+- o sistema entra no estado do exercício
 
----
-
-# Interface
-
-Durante a execução, a aplicação exibe uma janela chamada `Fisioterapia IA`.
-
-Nela, a usuária visualiza:
-
-- A imagem capturada pela webcam
-- A pose estimada pelo modelo
-- O nome do exercício atual
-- O número de repetições realizadas
-- A meta de repetições
-
-Essa interface tem caráter demonstrativo, mas já permite acompanhar o comportamento do algoritmo em tempo real e visualizar a progressão da atividade.
+Quando sobe novamente:
+- a repetição é contabilizada
 
 ---
 
-# Limites da Solução
+# Interface da aplicação
 
-Como prova de conceito, o projeto cumpre o objetivo de demonstrar a integração entre visão computacional, saúde da mulher e monitoramento de movimento.
+Durante a execução, a interface mostra:
 
-Ainda assim, existem limitações importantes:
+- keypoints desenhados na tela
+- exercício atual
+- quantidade de repetições
+- progresso da série
 
-- Os limiares de movimento são fixos em pixels, o que torna o resultado dependente da distância da câmera, resolução e enquadramento.
-- O sistema considera apenas a primeira pessoa detectada no vídeo.
-- A avaliação do movimento usa posições verticais, sem cálculo de ângulos articulares.
-- Não há validação clínica da postura ou da qualidade biomecânica do movimento.
-- O protótipo não substitui avaliação, prescrição ou acompanhamento de profissionais de saúde.
-
-Esses pontos não invalidam o protótipo, mas indicam caminhos claros de evolução para uma versão mais robusta.
+Tudo acontece em tempo real pela webcam.
 
 ---
 
-# Possíveis Evoluções
+# Limitações atuais
 
-Para uma aplicação mais adequada a cenários reais de saúde da mulher e fisioterapia, o projeto poderia evoluir com:
+Como isso ainda é uma prova de conceito, existem algumas limitações importantes:
 
-- Calibração inicial individual por usuário
-- Normalização dos limiares com base nas proporções corporais
-- Cálculo de ângulos articulares
-- Avaliação de qualidade do movimento, não apenas contagem
-- Registro histórico das sessões
-- Relatórios de desempenho
-- Suporte a diferentes perfis de exercícios
-- Personalização de protocolos conforme objetivo de recuperação funcional
-- Encerramento automático ao final da sequência
+- os limiares usam pixels fixos
+- a análise depende muito da posição da câmera
+- não existe avaliação biomecânica
+- não mede qualidade do movimento
+- não calcula ângulos articulares
+- não há suporte para múltiplas pessoas
+- pode existir latência dependendo da máquina
+
+Além disso:
+
+> O projeto NÃO substitui acompanhamento profissional de fisioterapeutas ou profissionais da saúde.
+
+---
+
+# Possíveis melhorias futuras
+
+Algumas melhorias que poderiam evoluir bastante o projeto:
+
+- cálculo de ângulos articulares
+- validação de postura
+- análise biomecânica
+- histórico de sessões
+- geração de relatórios
+- calibração automática
+- exercícios personalizados
+- múltiplos usuários
+- análise qualitativa do movimento
 
 ---
 
 # Conclusão
 
-O projeto implementa um protótipo funcional de acompanhamento de exercícios com IA, direcionado ao tema de saúde da mulher.
+Esse projeto foi criado para explorar aplicações reais de IA e visão computacional em exercícios fisioterapêuticos e recuperação funcional.
 
-A solução utiliza YOLO para estimar a pose corporal, OpenCV para processar e exibir o vídeo, e uma lógica baseada em estados para contar repetições.
+Além da parte técnica envolvendo pose estimation, o projeto também serviu para explorar:
 
-A abordagem demonstra de forma objetiva como modelos de visão computacional podem ser aplicados ao contexto de saúde, reabilitação e recuperação funcional.
+- processamento em tempo real
+- integração webcam + IA
+- aplicações web com Streamlit
+- containerização com Docker
 
-O projeto serve como base inicial para sistemas mais completos de apoio ao acompanhamento fisioterapêutico de mulheres, especialmente se combinado futuramente com critérios biomecânicos, calibração individual, personalização de protocolos e validação experimental.
+Mesmo sendo uma prova de conceito, o projeto mostra como modelos modernos de visão computacional conseguem interpretar movimentos humanos de forma relativamente simples e acessível.
