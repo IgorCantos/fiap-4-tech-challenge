@@ -26,17 +26,14 @@ API Flask que recebe um arquivo de áudio (geralmente WebM gravado no navegador)
 
 O backend implementa um **pipeline multimodal** sobre áudio de voz:
 
-| Etapa | Tecnologia | Saída |
-|-------|------------|--------|
-| Decodificação | PyAV + resample | Array NumPy mono 16 kHz |
-| Pré-processamento | Normalização de amplitude | Áudio escalado em [-1, 1] |
-| Detecção de fala | Silero VAD | Segmentos com voz (ou erro) |
-| Transcrição | Faster-Whisper `small` | Texto em português |
-| Emoção vocal | Wav2Vec2 (Audeering) | Rótulo + score de confiança |
-| Prosódia | openSMILE eGeMAPSv02 | Loudness, pitch, MFCC1, alpha ratio |
-| Síntese clínica | Ollama `gemma3:1b` | Relatório em linguagem natural |
-
-Todos os modelos rodam **localmente** (CPU no Whisper com `int8`; demais via PyTorch/Transformers). O Ollama é um **serviço separado** (porta 11434) acessado pela biblioteca `ollama` Python.
+| Etapa | Ferramenta | O que faz na prática |
+|-------|------------|-----------------------|
+| Preparação do Áudio | PyAV | Recebe o áudio do navegador e ajusta o formato e o volume para as inteligências artificiais entenderem. |
+| Filtragem de Voz | Silero VAD | Confirma se há voz humana no áudio (descarta trechos de silêncio ou apenas com ruídos). |
+| Transcrição | Faster-Whisper | Transcreve exatamente as palavras que foram ditas no áudio para formato de texto. |
+| Detecção de Emoção | Wav2Vec2 | Analisa o tom da voz para identificar a emoção predominante (como alegria, tristeza, irritação ou neutralidade). |
+| Análise Acústica | openSMILE | Mede características físicas da voz, como intensidade (volume), estabilidade e variações de tom. |
+| Relatório Clínico | Ollama (Gemma 3) | Junta todas as informações acima e redige um resumo humanizado e claro do estado do paciente. |
 
 ---
 
@@ -143,8 +140,8 @@ Os modelos são carregados **uma vez** (`load_models()`), com `threading.Lock`, 
 |------|---------|
 | **Pacote** | `av==12.1.0` |
 | **Onde** | `utils/audio_loader.py` → `load_audio_from_bytes()` |
-| **Por quê** | O navegador envia **WebM** (Opus). PyAV decodifica containers variados sem depender de arquivo em disco. |
-| **Responsabilidade** | Ler bytes → frames de áudio → **mono**, **16 kHz**, `float32` (padrão para VAD, Whisper e Wav2Vec2). |
+| **Na prática** | O navegador envia um arquivo de som (geralmente WebM). Essa ferramenta traduz esse arquivo para um formato padronizado e "limpo" que as IAs conseguem ler. |
+| **Responsabilidade** | Ler bytes → frames de áudio → **mono**, **16 kHz**, `float32`. |
 | **Saída** | `numpy.ndarray` 1D |
 
 Após o decode, `normalize_audio()` divide pelo pico absoluto para estabilizar amplitude entre gravações.
@@ -158,9 +155,9 @@ Após o decode, `normalize_audio()` divide pelo pico absoluto para estabilizar a
 | **Modelo** | [Silero VAD](https://github.com/snakers4/silero-vad) (via `silero-vad==5.1.2`) |
 | **Carregamento** | `load_silero_vad()` em `model_loader.py` |
 | **Uso** | `get_speech_timestamps(audio_np, vad_model, sampling_rate=16000)` |
-| **Por quê** | Evita transcrever/analisar áudio **sem fala** (silêncio, ruído só, microfone mudo). Reduz custo e falsos positivos. |
+| **Na prática** | Evita que o sistema tente analisar um áudio de microfone mutado ou contendo apenas barulho de vento. Reduz custos de processamento e resultados falsos. |
 | **Responsabilidade** | Responder: *existe voz humana neste áudio?* |
-| **Se falhar** | Retorno antecipado: `error: No speech detected in audio`, `emotion: inconclusiva`. |
+| **Se falhar** | Retorno antecipado amigável indicando que não foi detectada fala. |
 
 O VAD **não corta** o áudio antes do Whisper; apenas valida presença de fala. A transcrição usa o áudio completo.
 
@@ -171,11 +168,11 @@ O VAD **não corta** o áudio antes do Whisper; apenas valida presença de fala.
 | Item | Detalhe |
 |------|---------|
 | **Modelo** | `small` ([Systran/faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small)) |
-| **Biblioteca** | `faster-whisper==1.0.3` (implementação CTranslate2 do OpenAI Whisper) |
-| **Configuração** | `device="cpu"`, `compute_type="int8"`, `language="pt"`, `download_root=model_cache` |
-| **Por quê** | Boa qualidade em **português** com custo moderado em CPU; `int8` reduz RAM e tempo vs. float32. |
-| **Responsabilidade** | Gerar **transcrição literal** do que foi dito — base para coerência texto/voz e para o prompt da LLM. |
-| **Saída** | `transcription` (string concatenada dos segmentos) |
+| **Biblioteca** | `faster-whisper==1.0.3` |
+| **Configuração** | Otimizado para rodar de forma leve e rápida em português. |
+| **Na prática** | Escuta o áudio e escreve exatamente o que foi dito. Essa transcrição é fundamental para comparar se o "conteúdo" da fala bate com a "emoção" da voz. |
+| **Responsabilidade** | Gerar a **transcrição textual** da gravação. |
+| **Saída** | `transcription` (texto da fala) |
 
 O Whisper não classifica emoção; apenas converte fala em texto.
 
@@ -185,13 +182,12 @@ O Whisper não classifica emoção; apenas converte fala em texto.
 
 | Item | Detalhe |
 |------|---------|
-| **Modelo** | [`audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim`](https://huggingface.co/audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim) |
-| **Biblioteca** | `transformers` → `pipeline("audio-classification", ...)` |
-| **Treino** | Fine-tune em **MSP-Podcast** (emoções dimensionais/categóricas em áudio real de podcast) |
-| **Por quê** | Modelo **especializado em emoção a partir do áudio**, mais adequado que derivar emoção só do texto. |
-| **Responsabilidade** | Estimar **rótulo emocional dominante** e **score** (confiança da classe vencedora). |
-| **Regra de negócio** | Se `score < 0.4` → `emotion = "inconclusiva"` (sinal fraco / ambíguo). |
-| **Saída** | `emotion`, `emotion_confidence` |
+| **Modelo** | `wav2vec2-large-robust-12-ft-emotion-msp-dim` |
+| **Biblioteca** | `transformers` |
+| **Na prática** | Ele ignora o *quê* está sendo dito e presta atenção *em como* está sendo dito. Analisando o tom de voz, ele determina se a pessoa soa triste, feliz, irritada ou neutra. |
+| **Responsabilidade** | Estimar a **emoção predominante** e o nível de confiança (score) dessa conclusão. |
+| **Regra de negócio** | Se o sinal for ambíguo (confiança menor que 40%), marcamos como "inconclusiva". |
+| **Saída** | Rótulo da emoção e porcentagem de confiança. |
 
 Os rótulos exatos dependem do cabeçalho do modelo no Hugging Face (ex.: dimensões arousal/valence ou classes agregadas). O código usa o item de **maior score** do pipeline.
 
@@ -222,13 +218,11 @@ Valores ficam em `audio_features` no JSON de resposta (úteis para debug/API); o
 
 | Item | Detalhe |
 |------|---------|
-| **Modelo** | `gemma3:1b` (Google Gemma 3, ~1B parâmetros, via [Ollama](https://ollama.com)) |
-| **Constante** | `LLM_MODEL = "gemma3:1b"` em `model_loader.py` |
-| **Cliente** | `ollama==0.6.0` → `ollama.chat(...)` |
-| **Por quê** | Roda **local**, leve o suficiente para demo/tech challenge, gera texto em **português** e integra múltiplos sinais num único parecer legível. |
-| **Responsabilidade** | **Fusão** de transcrição + emoção + features acústicas em relatório com 4 seções, tom clínico-descritivo, sem diagnóstico. |
-| **Hiperparâmetros** | `temperature=0.3`, `num_predict=512` (respostas mais estáveis e limitadas) |
-| **System prompt** | `"Você é um analisador emocional clínico."` |
+| **Modelo** | `gemma3:1b` (Google Gemma 3, via [Ollama](https://ollama.com)) |
+| **Cliente** | `ollama==0.6.0` |
+| **Na prática** | Recebe todos os dados isolados gerados anteriormente (o texto transcrito, o rótulo de emoção, as variações de tom) e funciona como um "tradutor" clínico. Ele escreve o relatório final empático e humanizado. |
+| **Responsabilidade** | Realizar a **síntese final** cruzando transcrição, emoção e acústica, focando na coerência dos dados e removendo métricas técnicas para o leitor final. |
+| **Restrições de Prompt** | Foi estritamente instruído a **não fazer diagnósticos médicos**, não exibir números e manter um tom de anotação clínica. |
 | **Regras no user prompt** | Proibir diagnósticos, números, markdown, emojis; obrigar estrutura numerada 1–4 + disclaimer final |
 
 A LLM **não reexecuta** ML: apenas interpreta os outputs já calculados.

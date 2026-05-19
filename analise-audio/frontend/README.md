@@ -1,10 +1,10 @@
-# Frontend (Next.js)
+# Frontend (React + Vite)
 
-Interface Next.js para gravação e análise de áudio.
+Interface gráfica para gravação e visualização da análise de áudio.
 
-**Node.js 20 LTS** é a versão recomendada (requerida pelo Next.js 14 e pelo Docker).
+Recentemente migrada de Next.js para **React puro com Vite** e componentes do **Material UI**.
 
-Verifique com `node -v` (deve ser `v20.x.x`). Com [nvm](https://github.com/nvm-sh/nvm): `nvm use` na pasta `frontend` (lê o arquivo `.nvmrc`).
+**Node.js 20 LTS** é a versão recomendada (para compatibilidade com outras partes do projeto e Docker). Verifique com `node -v` (deve ser `v20.x.x`). 
 
 ## Setup
 
@@ -14,31 +14,39 @@ npm install
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000).
+Abra [http://localhost:5173](http://localhost:5173) (porta padrão do Vite).
 
-O backend Flask deve estar rodando em `http://localhost:5000` (veja `../backend/README.md`).
+> **Aviso:** O backend Flask deve estar rodando simultaneamente em `http://localhost:5000` (veja as instruções na pasta `../backend/README.md`).
 
-### Docker
+## Scripts Disponíveis
 
-O `entrypoint.sh` executa `npm ci` ao iniciar o container (necessário porque o volume montado substitui o `node_modules` da imagem). Na primeira vez, aguarde o download dos pacotes nos logs.
+- `npm run dev` — Inicia o servidor local de desenvolvimento super-rápido do Vite
+- `npm run build` — Transpila o TypeScript e gera a versão otimizada para produção (pasta `dist/`)
+- `npm run preview` — Roda localmente o código já compilado para produção (para testes)
+- `npm run lint` — Roda o ESLint para garantir a padronização e qualidade do código
 
-## Scripts
+## Estrutura do Projeto
 
-- `npm run dev` — servidor de desenvolvimento
-- `npm run build` — build de produção
-- `npm start` — servidor de produção
-- `npm run lint` — ESLint
-
-## Estrutura
-
-```
+```text
 frontend/
-├── app/
-│   ├── api/              # Rotas API do Next.js
-│   ├── audio-recording/  # Página de gravação
-│   ├── layout.tsx
-│   └── page.tsx
-├── recordings/           # Gravações salvas localmente
+├── src/
+│   ├── components/       # Componentes visuais e de negócio
+│   │   ├── AppNav.tsx         # Barra de navegação lateral/superior
+│   │   ├── AppShell.tsx       # Container principal da aplicação
+│   │   └── AudioRecording.tsx # Motor principal (gravação de áudio e comunicação com a API)
+│   ├── pages/            # Telas roteáveis
+│   │   └── AnalysesPage.tsx   # Tela de histórico buscando dados do Supabase
+│   ├── App.tsx           # Configuração de rotas e providers de tema
+│   ├── main.tsx          # Ponto de entrada do React no DOM
+│   └── theme.ts          # Tokens e paleta de cores do Material UI
 ├── package.json
-└── next.config.js
+└── vite.config.ts        # Configurações do bundler Vite
+```
+
+## Variáveis de Ambiente
+
+O Vite usa o prefixo `VITE_` para expor variáveis de ambiente ao código do navegador. Para customizar a URL da API, você pode criar um arquivo `.env` na pasta `frontend`:
+
+```env
+VITE_API_URL=http://localhost:5000/api
 ```
