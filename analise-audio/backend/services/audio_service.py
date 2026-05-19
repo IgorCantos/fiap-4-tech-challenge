@@ -16,20 +16,57 @@ from utils.model_loader import (
 
 SAMPLE_RATE = 16000
 
+EMOTION_MAP = {
+    "neu": "neutro",
+    "hap": "feliz",
+    "ang": "irritado",
+    "sad": "triste"
+}
+
+
+def categorizar_intensidade(valor):
+    """Categoriza a intensidade vocal."""
+    if not valor: return "normal"
+    if valor > 0.4: return "alta"
+    if valor < 0.15: return "baixa"
+    return "normal"
+
+
+def categorizar_tom(valor):
+    """Categoriza a variação de tom da fala."""
+    if not valor: return "estável"
+    if valor > 20: return "com variações marcantes"
+    if valor < 12: return "monótona"
+    return "estável"
+
+
+def categorizar_estabilidade(valor):
+    """Categoriza a estabilidade vocal."""
+    if not valor: return "tranquila/segura"
+    if valor > -10: return "tensa/agitada"
+    return "tranquila/segura"
+
+
+def extrair_feature(features_df, nome_coluna):
+    """Extrai uma feature de áudio do DataFrame de forma segura."""
+    if nome_coluna in features_df.columns:
+        return to_python_float(features_df[nome_coluna].values[0])
+    return None
+
 
 def analyze_audio(audio_np):
     """Analyze audio and return transcription, emotion, and LLM analysis."""
     
-    # Normalize audio
+    # 1. Normalização
     audio_np = normalize_audio(audio_np)
     
-    # Get models
+    # 2. Carregamento de Modelos
     whisper_model = get_whisper_model()
     emotion_classifier = get_emotion_classifier()
     smile = get_smile()
     vad_model = get_vad_model()
     
-    # VAD to detect speech
+    # 3. Detecção de Voz (VAD)
     print("Running VAD...")
     speech_timestamps = get_speech_timestamps(
         audio_np,
@@ -37,7 +74,7 @@ def analyze_audio(audio_np):
         sampling_rate=SAMPLE_RATE
     )
     
-    if len(speech_timestamps) == 0:
+    if not speech_timestamps:
         return {
             'error': 'No speech detected in audio',
             'transcription': '',
@@ -45,142 +82,73 @@ def analyze_audio(audio_np):
             'analysis': 'Não foi detectada fala no áudio.'
         }
     
-    # Transcription
+    # 4. Transcrição (Whisper)
     print("Transcribing audio...")
-    segments, info = whisper_model.transcribe(audio_np, language="pt")
-    full_text = ""
-    for segment in segments:
-        full_text += segment.text + " "
-    full_text = full_text.strip()
+    segments, _ = whisper_model.transcribe(audio_np, language="pt")
+    full_text = " ".join(segment.text for segment in segments).strip()
     
-    # Emotion detection
+    # 5. Detecção de Emoção
     print("Detecting emotion...")
-    result = emotion_classifier(audio_np, sampling_rate=16000)
+    result = emotion_classifier(audio_np, sampling_rate=SAMPLE_RATE)
     top_emotion = max(result, key=lambda x: x["score"])
-    emotion_label = str(top_emotion["label"]).lower()
+    
+    emotion_label_raw = str(top_emotion["label"]).lower()
     emotion_score = float(top_emotion["score"])
     
-    emotion_map = {
-        "neu": "neutro",
-        "hap": "feliz",
-        "ang": "irritado",
-        "sad": "triste"
-    }
-    emotion_label = emotion_map.get(emotion_label, emotion_label)
-    
+    emotion_label = EMOTION_MAP.get(emotion_label_raw, emotion_label_raw)
     if emotion_score < 0.4:
         emotion_label = "inconclusiva"
     
-    # OpenSMILE features
+    # 6. Extração de Features Acústicas (OpenSMILE)
     print("Extracting audio features...")
     features = smile.process_signal(audio_np, SAMPLE_RATE)
     
-    loudness = None
-    pitch = None
-    mfcc1 = None
-    alpha_ratio = None
+    loudness = extrair_feature(features, "loudness_sma3_amean")
+    pitch = extrair_feature(features, "F0semitoneFrom27.5Hz_sma3nz_amean")
+    mfcc1 = extrair_feature(features, "mfcc1_sma3_amean")
+    alpha_ratio = extrair_feature(features, "alphaRatioV_sma3nz_amean")
     
-    if "loudness_sma3_amean" in features.columns:
-        loudness = to_python_float(features["loudness_sma3_amean"].values[0])
-    if "F0semitoneFrom27.5Hz_sma3nz_amean" in features.columns:
-        pitch = to_python_float(features["F0semitoneFrom27.5Hz_sma3nz_amean"].values[0])
-    if "mfcc1_sma3_amean" in features.columns:
-        mfcc1 = to_python_float(features["mfcc1_sma3_amean"].values[0])
-    if "alphaRatioV_sma3nz_amean" in features.columns:
-        alpha_ratio = to_python_float(features["alphaRatioV_sma3nz_amean"].values[0])
-    
-    # Text normalization
-    texto_lower = full_text.lower()
-    texto_lower = unicodedata.normalize("NFKD", texto_lower).encode("ASCII", "ignore").decode("utf-8")
-    
-    # LLM analysis
+    # 7. Geração de Análise Humanizada (LLM)
     print("Generating LLM analysis...")
+    q_intensity = categorizar_intensidade(loudness)
+    q_pitch = categorizar_tom(pitch)
+    q_stability = categorizar_estabilidade(alpha_ratio)
+    
     fusion_prompt = f"""
-Você é um sistema auxiliar de análise emocional para acompanhamento clínico de pacientes.
+Você é um assistente especializado em análise comportamental e emocional para apoio clínico.
 
-Sua função é realizar apenas uma síntese descritiva e humanizada dos sinais emocionais percebidos na fala e no conteúdo textual.
+Sua função é redigir um relatório descritivo, humanizado e de fácil leitura para médicos e profissionais de saúde mental.
 
-REGRAS IMPORTANTES:
-- NÃO invente informações.
-- NÃO faça diagnósticos médicos.
-- NÃO afirme doenças, transtornos ou condições clínicas.
-- NÃO conclua que o paciente possui depressão, ansiedade ou qualquer patologia.
-- Apenas descreva padrões emocionais observáveis presentes nos dados fornecidos.
-- Sempre deixe claro que a análise NÃO substitui avaliação médica profissional.
-- Utilize apenas os dados recebidos abaixo.
-- Não extrapole além das evidências fornecidas.
+DADOS DA ANÁLISE:
+- Transcrição do relato do paciente: "{full_text}"
+- Emoção predominante detectada na voz: {emotion_label.capitalize()}
+- Intensidade da voz: {q_intensity}
+- Variação de tom: {q_pitch}
+- Estabilidade vocal: {q_stability}
 
-REGRAS ABSOLUTAS:
-- É PROIBIDO exibir:
-  - números
-  - porcentagens
-  - scores
-  - métricas
-  - valores decimais
-  - nomes técnicos
-  - nomes de features
-  - nomes de variáveis
-  - termos de machine learning
-- Nunca mencione:
-  loudness, pitch, mfcc, alpha_ratio, score, confiança, probabilidade ou valores estatísticos.
-- Converta TODOS os dados técnicos em linguagem natural e humana.
-- A resposta deve parecer escrita por um profissional clínico humano.
-- Nunca cite dados brutos recebidos na entrada.
-- Nunca explique métricas.
-- Nunca apresente medições numéricas.
-- Mesmo que existam números na entrada, eles DEVEM ser ignorados na resposta.
-- Caso algum valor técnico seja mencionado, a resposta está incorreta.
+INSTRUÇÕES IMPORTANTES:
+- Escreva de forma humanizada, empática e profissional.
+- O texto DEVE ser fluído, coeso e ter tom clínico.
+- É ESTRITAMENTE PROIBIDO incluir números, valores decimais, métricas ou jargões técnicos de software.
+- Concentre-se em como a emoção detectada e as características vocais se relacionam com o conteúdo da fala.
+- NÃO faça diagnósticos médicos. Apenas descreva o que foi observado.
 
-REGRAS DE FORMATAÇÃO:
-- NÃO converse com o usuário.
-- NÃO use frases como:
-  "Ok", "Claro", "Vamos nessa", "Entendi", ou similares.
-- NÃO faça introduções.
-- NÃO use markdown.
-- NÃO use emojis.
-- A resposta deve começar DIRETAMENTE por:
-  "1. PADRÕES EMOCIONAIS OBSERVADOS"
-- Responda SOMENTE os tópicos solicitados.
-
-OBJETIVO:
-Realizar uma fusão entre:
-- características emocionais da voz
-- emoção vocal detectada
-- intensidade e estabilidade vocal
-- padrões da fala
-- contexto textual da transcrição
-
-DADOS DISPONÍVEIS:
-
-TRANSCRIÇÃO:
-{full_text}
-
-EMOÇÃO VOCAL DETECTADA:
-{emotion_label}
-
-DADOS TÉCNICOS INTERNOS (NÃO DEVEM APARECER NA RESPOSTA):
-- intensidade vocal: {loudness}
-- tom e variação da fala: {pitch}
-- características do padrão de fala: {mfcc1}
-- estabilidade vocal percebida: {alpha_ratio}
-- confiança: {emotion_score}
-
-INSTRUÇÕES DE RESPOSTA:
+ESTRUTURA DO RELATÓRIO:
 
 1. PADRÕES EMOCIONAIS OBSERVADOS
-Descreva de forma humanizada os possíveis estados emocionais percebidos na fala e no conteúdo textual.
+(Descreva o estado emocional do paciente com base no conteúdo da fala e na emoção detectada. Use linguagem clínica e descritiva)
 
 2. COERÊNCIA ENTRE VOZ E TEXTO
-Explique se a maneira de falar parece coerente com o conteúdo verbalizado.
+(Explique de forma clínica se a maneira de falar e a emoção percebida na voz parecem coerentes com o conteúdo relatado)
 
 3. ANÁLISE DA VOZ E DA FALA
-Descreva ritmo, energia, estabilidade, naturalidade e possíveis oscilações emocionais percebidas, utilizando apenas linguagem natural.
+(Descreva o ritmo, a energia e a naturalidade da fala baseando-se nos indicadores de intensidade, tom e estabilidade fornecidos, sem citar que vieram de um sistema)
 
 4. RESUMO CLÍNICO DESCRITIVO
-Faça um resumo técnico, breve e humanizado, sem listas e sem repetir conceitos.
+(Faça uma breve síntese do estado emocional e do discurso do paciente, útil para o acompanhamento do profissional de saúde)
 
-Finalize obrigatoriamente com:
-'Esta análise possui caráter exclusivamente auxiliar e não substitui avaliação clínica profissional.'
+Finalize obrigatoriamente o relatório com a frase:
+"Esta análise possui caráter exclusivamente auxiliar e não substitui avaliação clínica profissional."
 """
     
     response = ollama.chat(
@@ -192,17 +160,15 @@ Finalize obrigatoriamente com:
         options={"temperature": 0.3, "num_predict": 512},
     )
     
-    analysis = response["message"]["content"]
-    
     return {
         'transcription': str(full_text),
         'emotion': str(emotion_label),
-        'emotion_confidence': float(emotion_score),
+        'emotion_confidence': emotion_score,
         'audio_features': {
             'loudness': loudness,
             'pitch': pitch,
             'mfcc1': mfcc1,
             'alpha_ratio': alpha_ratio
         },
-        'analysis': str(analysis)
+        'analysis': str(response["message"]["content"])
     }
