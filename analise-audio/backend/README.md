@@ -224,7 +224,7 @@ Valores ficam em `audio_features` no JSON de resposta (úteis para debug/API); o
 |------|---------|
 | **Modelo** | `gemma3:1b` (Google Gemma 3, ~1B parâmetros, via [Ollama](https://ollama.com)) |
 | **Constante** | `LLM_MODEL = "gemma3:1b"` em `model_loader.py` |
-| **Cliente** | `ollama==0.1.7` → `ollama.chat(...)` |
+| **Cliente** | `ollama==0.6.0` → `ollama.chat(...)` |
 | **Por quê** | Roda **local**, leve o suficiente para demo/tech challenge, gera texto em **português** e integra múltiplos sinais num único parecer legível. |
 | **Responsabilidade** | **Fusão** de transcrição + emoção + features acústicas em relatório com 4 seções, tom clínico-descritivo, sem diagnóstico. |
 | **Hiperparâmetros** | `temperature=0.3`, `num_predict=512` (respostas mais estáveis e limitadas) |
@@ -321,9 +321,10 @@ curl -X POST http://localhost:5000/api/audio \
 **Dependências principais** (`requirements.txt`):
 
 - **Web:** Flask 3, Flask-CORS  
-- **Áudio:** `av`, `silero-vad`, `opensmile`  
+- **Áudio:** `av`, `silero-vad`, `opensmile`, `sounddevice`, `soundfile`  
 - **ML:** `torch`, `torchaudio`, `faster-whisper`, `transformers`  
 - **LLM:** `ollama` (cliente HTTP para o daemon Ollama)
+- **Banco de Dados:** `supabase` (cliente oficial Python)
 
 ---
 
@@ -436,7 +437,7 @@ flowchart LR
 
 ## Contato com o frontend
 
-O frontend Next.js (`frontend/app/audio-recording/page.tsx`) envia `POST` para `http://localhost:5000/api/audio` (ou `NEXT_PUBLIC_API_URL`) e exibe `analysis.transcription`, `analysis.emotion` e `analysis.analysis`.
+O frontend em React com Vite (migrado recentemente) envia um `POST` para `http://localhost:5000/api/audio` (ou `VITE_API_URL`) e exibe os resultados da análise retornados pelo backend.
 
 ---
 
@@ -456,4 +457,4 @@ Após cada análise bem-sucedida, o texto da **LLM** (e metadados) é salvo na t
 |--------|------|-----------|
 | `GET` | `/api/analyses?limit=50` | Lista análises salvas (mais recentes primeiro) |
 
-O frontend consome em `/analyses` (`frontend/app/analyses/page.tsx`).
+O frontend React consome essa rota na página correspondente de histórico de análises.
