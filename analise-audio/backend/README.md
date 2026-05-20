@@ -374,15 +374,12 @@ O diretório `model_cache` está no `.gitignore` da raiz do repositório.
 
 ## Limitações conhecidas
 
-1. **CPU only** no Whisper — latência alta em áudios longos.  
-2. **Um único idioma** forçado na transcrição: `language="pt"`.  
-3. **Emoção vocal ≠ estado clínico** — o classificador foi treinado em podcast, não em consultório.  
-4. **LLM pode alucinar** apesar das restrições do prompt; revisão humana é obrigatória.  
-5. **`text_sentiment` ocioso** — consome RAM no boot sem uso no pipeline.  
-6. **CORS aberto** — adequado para desenvolvimento; restringir origens em produção.  
-7. **Servidor Flask de desenvolvimento** — para produção, usar Gunicorn/uWSGI + reverse proxy.  
-8. **Sem autenticação** na rota `/api/audio`.  
-9. **VAD não remove silêncio** — Whisper ainda processa o arquivo inteiro após validação.
+Atualmente, o projeto possui alguns pontos de melhoria e limitações que devem ser considerados:
+
+- O modelo Whisper está configurado para rodar na CPU, o que pode aumentar um pouco o tempo de processamento para áudios mais longos.
+- A transcrição está fixa para focar apenas no idioma português (`language="pt"`).
+- O modelo de classificação de emoções baseia-se em dados genéricos (como podcasts). Ele serve apenas como um indicador da prosódia e não diagnostica nenhum estado clínico real.
+- Apesar dos ajustes no prompt, o LLM ainda está sujeito a alucinações. É indispensável que um humano revise o relatório final.
 
 ---
 
